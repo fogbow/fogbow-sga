@@ -1,5 +1,6 @@
 package csbase.fogbow;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Properties;
 
@@ -10,33 +11,58 @@ public class SSHSGADataTransfer implements ISGADataTransfer {
 
 	private String host;
 	private int port;
-	private String pubKey;
+	private String privateKey;
+	private String userName;
 
-	public SSHSGADataTransfer(String host, int port, String pubKey) {
+	public SSHSGADataTransfer(String host, int port, String userName, String privateKey) {
 		this.host = host;
 		this.port = port;
-		this.pubKey = pubKey;
+		this.userName = userName;
+		this.privateKey = privateKey;
 	}
 	
 	@Override
 	public boolean checkExistence(String[] arg0)
 			throws SGADataTransferException {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
 	public void copyFrom(String[] arg0, String[] arg1)
 			throws SGADataTransferException {
-		// TODO Auto-generated method stub
-
+		SSHClientWrapper wrapper = new SSHClientWrapper();
+		try {
+			wrapper.connect(host, port, userName, privateKey);
+			for (int i = 0; i < arg0.length; i++) {
+				wrapper.doScpDownload(arg1[i], arg0[i]);
+			}
+		} catch (Exception e) {
+			throw new SGADataTransferException(e);
+		} finally {
+			try {
+				wrapper.disconnect();
+			} catch (IOException e) {
+			}
+		}
 	}
 
 	@Override
 	public void copyTo(String[] arg0, String[] arg1)
 			throws SGADataTransferException {
-		// TODO Auto-generated method stub
-
+		SSHClientWrapper wrapper = new SSHClientWrapper();
+		try {
+			wrapper.connect(host, port, userName, privateKey);
+			for (int i = 0; i < arg0.length; i++) {
+				wrapper.doScpUpload(arg0[i], arg1[i]);
+			}
+		} catch (Exception e) {
+			throw new SGADataTransferException(e);
+		} finally {
+			try {
+				wrapper.disconnect();
+			} catch (IOException e) {
+			}
+		}
 	}
 
 	@Override
