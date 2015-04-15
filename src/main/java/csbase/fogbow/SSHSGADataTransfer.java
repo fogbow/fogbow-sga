@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Properties;
 
+import org.apache.commons.lang3.StringUtils;
+
 import csbase.server.plugin.service.sgaservice.ISGADataTransfer;
 import csbase.server.plugin.service.sgaservice.SGADataTransferException;
 
@@ -24,7 +26,19 @@ public class SSHSGADataTransfer implements ISGADataTransfer {
 	@Override
 	public boolean checkExistence(String[] arg0)
 			throws SGADataTransferException {
-		return false;
+		SSHClientWrapper wrapper = new SSHClientWrapper();
+		String filePath = StringUtils.join(arg0, "/");
+		try {
+			wrapper.connect(host, port, userName, privateKey);
+			return wrapper.doSshExecution("stat " + filePath) == 0;
+		} catch (Exception e) {
+			return false;
+		} finally {
+			try {
+				wrapper.disconnect();
+			} catch (IOException e) {
+			}
+		}
 	}
 
 	@Override
@@ -33,9 +47,8 @@ public class SSHSGADataTransfer implements ISGADataTransfer {
 		SSHClientWrapper wrapper = new SSHClientWrapper();
 		try {
 			wrapper.connect(host, port, userName, privateKey);
-			for (int i = 0; i < arg0.length; i++) {
-				wrapper.doScpDownload(arg1[i], arg0[i]);
-			}
+			wrapper.doScpDownload(StringUtils.join(arg1, "/"), 
+					StringUtils.join(arg0, "/"));
 		} catch (Exception e) {
 			throw new SGADataTransferException(e);
 		} finally {
@@ -52,9 +65,8 @@ public class SSHSGADataTransfer implements ISGADataTransfer {
 		SSHClientWrapper wrapper = new SSHClientWrapper();
 		try {
 			wrapper.connect(host, port, userName, privateKey);
-			for (int i = 0; i < arg0.length; i++) {
-				wrapper.doScpUpload(arg0[i], arg1[i]);
-			}
+			wrapper.doScpUpload(StringUtils.join(arg0, "/"), 
+					StringUtils.join(arg1, "/"));
 		} catch (Exception e) {
 			throw new SGADataTransferException(e);
 		} finally {

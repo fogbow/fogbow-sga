@@ -30,6 +30,9 @@ public class FogbowExecutor implements JobExecutor {
 	private static final Logger LOGGER = Logger.getLogger(FogbowExecutor.class.getName());
 	private static final Executor EXECUTOR = Executors.newCachedThreadPool();
 	
+	private static final String REMOTE_COMMAND_LINE = 
+			"function exec_in_bg { %s; echo $? > %s; }; exec_in_bg &";
+	
 	private static final String PROP_INPUT_FILES = "fogbow_input_files_path";
 	private static final String PROP_OUTPUT_FILES = "fogbow_output_files_path";
 	private static final String PROP_VOMS_PROXY = "fogbow_voms_proxy";
@@ -108,7 +111,7 @@ public class FogbowExecutor implements JobExecutor {
 		String sshUserName = extraParams.get(PROP_SSH_USER_NAME);
 		try {
 			stageFiles(new JSONObject(extraParams.get(PROP_INPUT_FILES)), 
-					request, instance, privKey, sshUserName, true);
+					instance, privKey, sshUserName, true);
 		} catch (SGADataTransferException e) {
 			LOGGER.log(Level.WARNING, "Couldn't transfer files to remote VM", e);
 			terminate(request, extraParams);
@@ -117,56 +120,48 @@ public class FogbowExecutor implements JobExecutor {
 		}
 		
 		try {
-			exec(jobCommand, instance, privKey, sshUserName);
+			exec(jobCommand, request, instance, privKey, sshUserName);
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Failure during remote execution", e);
 			terminate(request, extraParams);
 			observer.onJobLost();
-			return;
 		}
-		
-		try {
-			stageFiles(new JSONObject(extraParams.get(PROP_OUTPUT_FILES)), 
-					request, instance, privKey, sshUserName, false);
-		} catch (SGADataTransferException e) {
-			LOGGER.log(Level.WARNING, "Couldn't transfer files back from remote VM", e);
-			terminate(request, extraParams);
-			observer.onJobLost();
-			return;
-		}
-		
-		terminate(request, extraParams);
-		observer.onJobCompleted(new JobInfo());
 	}
 
-	private void exec(String jobCommand, Instance instance, String privKey,
-			String sshUserName) throws IOException {
+	private void exec(String jobCommand, Request request, Instance instance, 
+			String privKey, String sshUserName) throws IOException {
 		SSHClientWrapper wrapper = new SSHClientWrapper();
 		wrapper.connect(instance.getSshHost(), instance.getSshPort(), 
 				sshUserName, privKey);
-		wrapper.doSshExecution(jobCommand);
+		wrapper.doSshExecution(String.format(REMOTE_COMMAND_LINE, 
+				jobCommand, getDoneFile(request.getId())));
 		wrapper.disconnect();
 	}
 
-	private void stageFiles(JSONObject inputsJson, Request request,
-			Instance instance, String privKey, String sshUserName, boolean in) throws SGADataTransferException {
+	private String getDoneFile(String requestId) {
+		return REMOTE_SANDBOX + requestId + ".done";
+	}
+
+	private void stageFiles(JSONObject inputsJson, 
+			Instance instance, String privKey, 
+			String sshUserName, boolean in) throws SGADataTransferException {
+		
 		SSHSGADataTransfer dataTransfer = new SSHSGADataTransfer(
 				instance.getSshHost(), instance.getSshPort(), 
 				sshUserName, privKey);
-		String[] localFiles = new String[inputsJson.length()];
-		String[] remoteFiles = new String[inputsJson.length()];
 		
-		int i = 0;
 		for (String localFilePath : inputsJson.keySet()) {
-			localFiles[i] = localFilePath;
-			remoteFiles[i] = REMOTE_SANDBOX + inputsJson.optString(localFilePath);
-			i++;
+			String remoteFilePath = REMOTE_SANDBOX + inputsJson.optString(localFilePath);
+			if (in) {
+				dataTransfer.copyTo(split(localFilePath), split(remoteFilePath));
+			} else {
+				dataTransfer.copyFrom(split(remoteFilePath), split(localFilePath));
+			}
 		}
-		if (in) {
-			dataTransfer.copyTo(localFiles, remoteFiles);
-		} else {
-			dataTransfer.copyFrom(remoteFiles, localFiles);
-		}
+	}
+
+	private static String[] split(String filePath) {
+		return filePath.split("/");
 	}
 	
 	private void terminate(Request request, Map<String, String> extraParams) {
@@ -241,7 +236,70 @@ public class FogbowExecutor implements JobExecutor {
 
 	@Override
 	public boolean retrieveJob(JobData data, JobObserver observer) {
-		return false;
+		
+		FogbowJobData fogbowJobData = (FogbowJobData) data;
+		Map<String, String> extraParams = fogbowJobData.getExtraParams();
+		FogbowClient fogbowClient = new FogbowClient(extraParams.get(PROP_MANAGER_HOST), 
+				Integer.parseInt(extraParams.get(PROP_MANAGER_PORT)), 
+				extraParams.get(PROP_VOMS_PROXY));
+		Instance instance = null;
+		try {
+			instance = fogbowClient.getInstance(fogbowJobData.getInstanceId());
+		} catch (Exception e) {
+			terminate(fogbowJobData);
+			return false;
+		}
+		if (instance.getSshHost() == null || 
+				instance.getSshPort() == null) {
+			terminate(fogbowJobData);
+			return false;
+		}
+		
+		String sshUserName = extraParams.get(PROP_SSH_USER_NAME);
+		String privKey = null;
+		try {
+			privKey = IOUtils.toString(
+						new FileInputStream(extraParams.get(PROP_SSH_PRIVATE_KEY_PATH)));
+		} catch (IOException e) {
+			terminate(fogbowJobData);
+			return false;
+		}
+			
+		SSHSGADataTransfer dataTransfer = new SSHSGADataTransfer(
+				instance.getSshHost(), instance.getSshPort(), 
+				sshUserName, privKey);
+		boolean doneFileExists = false;
+		try {
+			doneFileExists = dataTransfer.checkExistence(getDoneFile(
+					fogbowJobData.getRequestId()).split("/"));
+		} catch (SGADataTransferException e) {
+			terminate(fogbowJobData);
+			return false;
+		}
+		
+		if (doneFileExists) {
+			
+			try {
+				stageFiles(new JSONObject(extraParams.get(PROP_OUTPUT_FILES)), 
+						instance, privKey, sshUserName, false);
+			} catch (SGADataTransferException e) {
+				LOGGER.log(Level.WARNING, "Couldn't transfer files back from remote VM", e);
+				terminate(fogbowJobData);
+				return false;
+			}
+			
+			terminate(fogbowJobData);
+			JobInfo jobInfo = new JobInfo();
+			jobInfo.jobParam.put(COMMAND_STATE.value, ProcessState.FINISHED.toString());
+			observer.onJobCompleted(jobInfo);
+		}
+		
+		return true;
+	}
+
+	private void terminate(FogbowJobData fogbowJobData) {
+		terminate(new Request(fogbowJobData.getRequestId(), 
+				fogbowJobData.getInstanceId()), fogbowJobData.getExtraParams());
 	}
 
 	@Override
@@ -249,8 +307,7 @@ public class FogbowExecutor implements JobExecutor {
 			throws InvalidActionException, ActionNotSupportedException {
 		if (JobControlAction.TERMINATE.equals(action)) {
 			FogbowJobData fogbowJobData = (FogbowJobData) data;
-			terminate(new Request(fogbowJobData.getRequestId(), 
-					fogbowJobData.getInstanceId()), fogbowJobData.getExtraParams());
+			terminate(fogbowJobData);
 			return;
 		}
 		
@@ -263,5 +320,4 @@ public class FogbowExecutor implements JobExecutor {
 		jobInfo.jobParam.put(COMMAND_STATE.value, ProcessState.RUNNING.toString());
 		return jobInfo;
 	}
-
 }
