@@ -1,6 +1,5 @@
 package csbase.fogbow;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Properties;
@@ -9,7 +8,6 @@ import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.apache.commons.io.IOUtils;
 import org.fogbowcloud.cli.FogbowClient;
 import org.fogbowcloud.cli.Instance;
 import org.fogbowcloud.cli.Request;
@@ -121,16 +119,7 @@ public class FogbowExecutor implements JobExecutor {
 			Map<String, String> extraParams, Request request, 
 			Instance instance, JobObserver observer) {
 		
-		String privKey = null;
-		try {
-			privKey = IOUtils.toString(
-					new FileInputStream(extraParams.get(PROP_SSH_PRIVATE_KEY_PATH)));
-		} catch (IOException e) {
-			LOGGER.log(Level.WARNING, "Couldn't read SSH private key", e);
-			terminate(request, extraParams);
-			observer.onJobLost();
-			return;
-		}
+		String privKey = pluginProperties.getProperty(PROP_SSH_PRIVATE_KEY_PATH);
 		String sshUserName = pluginProperties.getProperty(PROP_SSH_USER_NAME);
 		try {
 			stageFiles(new JSONObject(extraParams.get(PROP_INPUT_FILES)), 
@@ -283,14 +272,7 @@ public class FogbowExecutor implements JobExecutor {
 		}
 		
 		String sshUserName = pluginProperties.getProperty(PROP_SSH_USER_NAME);
-		String privKey = null;
-		try {
-			privKey = IOUtils.toString(
-						new FileInputStream(extraParams.get(PROP_SSH_PRIVATE_KEY_PATH)));
-		} catch (IOException e) {
-			terminate(fogbowJobData);
-			return false;
-		}
+		String privKey = pluginProperties.getProperty(PROP_SSH_PRIVATE_KEY_PATH);
 			
 		SSHSGADataTransfer dataTransfer = new SSHSGADataTransfer(
 				instance.getSshHost(), instance.getSshPort(), 
