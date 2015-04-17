@@ -35,7 +35,9 @@ public class FogbowExecutor implements JobExecutor {
 	
 	private static final String PROP_INPUT_FILES = "fogbow_input_files_path";
 	private static final String PROP_OUTPUT_FILES = "fogbow_output_files_path";
-	private static final String PROP_VOMS_PROXY = "fogbow_voms_proxy";
+	private static final String PROP_FEDERATION_TOKEN = "fogbow_federation_token";
+	private static final String PROP_LOCAL_TOKEN = "fogbow_local_token";
+	
 	private static final String PROP_SSH_PRIVATE_KEY_PATH = "fogbow_ssh_private_key_path";
 	private static final String PROP_SSH_PUBLIC_KEY_PATH = "fogbow_ssh_public_key_path";
 	private static final String PROP_SSH_USER_NAME = "fogbow_ssh_user_name";
@@ -52,13 +54,14 @@ public class FogbowExecutor implements JobExecutor {
 			Map<String, String> extraParams, JobObserver observer) {
 		FogbowClient fogbowClient = new FogbowClient(extraParams.get(PROP_MANAGER_HOST), 
 				Integer.parseInt(extraParams.get(PROP_MANAGER_PORT)), 
-				extraParams.get(PROP_VOMS_PROXY));
+				extraParams.get(PROP_FEDERATION_TOKEN));
 		
 		String requestId = null;
 		try {
 			requestId = fogbowClient.createRequest(extraParams.get(PROP_REQUIREMENTS), 
 					extraParams.get(PROP_IMAGE_NAME), 
-					extraParams.get(PROP_SSH_PUBLIC_KEY_PATH), null);
+					extraParams.get(PROP_SSH_PUBLIC_KEY_PATH), 
+					extraParams.get(PROP_LOCAL_TOKEN));
 		} catch (Exception e) {
 			observer.onJobLost();
 			LOGGER.log(Level.WARNING, "Couldn't submit request to the Fogbow manager", e);
@@ -167,7 +170,7 @@ public class FogbowExecutor implements JobExecutor {
 	private void terminate(Request request, Map<String, String> extraParams) {
 		FogbowClient fogbowClient = new FogbowClient(extraParams.get(PROP_MANAGER_HOST), 
 				Integer.parseInt(extraParams.get(PROP_MANAGER_PORT)), 
-				extraParams.get(PROP_VOMS_PROXY));
+				extraParams.get(PROP_FEDERATION_TOKEN));
 		try {
 			fogbowClient.deleteRequest(request.getId());
 		} catch (Exception e) {
@@ -241,7 +244,7 @@ public class FogbowExecutor implements JobExecutor {
 		Map<String, String> extraParams = fogbowJobData.getExtraParams();
 		FogbowClient fogbowClient = new FogbowClient(extraParams.get(PROP_MANAGER_HOST), 
 				Integer.parseInt(extraParams.get(PROP_MANAGER_PORT)), 
-				extraParams.get(PROP_VOMS_PROXY));
+				extraParams.get(PROP_FEDERATION_TOKEN));
 		Instance instance = null;
 		try {
 			instance = fogbowClient.getInstance(fogbowJobData.getInstanceId());
