@@ -8,7 +8,6 @@ import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.connection.channel.direct.Session;
 import net.schmizz.sshj.connection.channel.direct.Session.Command;
 import net.schmizz.sshj.transport.verification.HostKeyVerifier;
-import net.schmizz.sshj.userauth.keyprovider.KeyProvider;
 import net.schmizz.sshj.xfer.FileSystemFile;
 import net.schmizz.sshj.xfer.scp.SCPFileTransfer;
 
@@ -79,9 +78,7 @@ public class SSHClientWrapper {
     	addBlankHostKeyVerifier(client);
     	client.connect(host, port);
     	if (userName != null && privateKeyFilePath != null) {
-    		File privateKey = new File(privateKeyFilePath);
-    		KeyProvider keys = client.loadKeys(privateKey.getPath());
-    		client.authPublickey(userName, keys);
+    		client.authPublickey(userName, privateKeyFilePath);
     	}
     }
     
