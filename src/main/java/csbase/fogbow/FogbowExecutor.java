@@ -3,6 +3,7 @@ package csbase.fogbow;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -50,18 +51,24 @@ public class FogbowExecutor implements JobExecutor {
 	private static final int MAX_RETRIES = 30;
 	private static final String REMOTE_SANDBOX = "/tmp/sandbox/";
 	
+	private Properties pluginProperties;
+	
+	public FogbowExecutor(Properties pluginProperties) {
+		this.pluginProperties = pluginProperties;
+	}
+
 	@Override
 	public JobData executeJob(String jobCommand,
 			Map<String, String> extraParams, JobObserver observer) {
-		FogbowClient fogbowClient = new FogbowClient(extraParams.get(PROP_MANAGER_HOST), 
-				Integer.parseInt(extraParams.get(PROP_MANAGER_PORT)), 
+		FogbowClient fogbowClient = new FogbowClient(pluginProperties.getProperty(PROP_MANAGER_HOST), 
+				Integer.parseInt(pluginProperties.getProperty(PROP_MANAGER_PORT)), 
 				extraParams.get(PROP_FEDERATION_TOKEN));
 		
 		String requestId = null;
 		try {
-			requestId = fogbowClient.createRequest(extraParams.get(PROP_REQUIREMENTS), 
-					extraParams.get(PROP_IMAGE_NAME), 
-					extraParams.get(PROP_SSH_PUBLIC_KEY_PATH), 
+			requestId = fogbowClient.createRequest(pluginProperties.getProperty(PROP_REQUIREMENTS), 
+					pluginProperties.getProperty(PROP_IMAGE_NAME), 
+					pluginProperties.getProperty(PROP_SSH_PUBLIC_KEY_PATH), 
 					extraParams.get(PROP_LOCAL_TOKEN));
 		} catch (Exception e) {
 			observer.onJobLost();
@@ -124,7 +131,7 @@ public class FogbowExecutor implements JobExecutor {
 			observer.onJobLost();
 			return;
 		}
-		String sshUserName = extraParams.get(PROP_SSH_USER_NAME);
+		String sshUserName = pluginProperties.getProperty(PROP_SSH_USER_NAME);
 		try {
 			stageFiles(new JSONObject(extraParams.get(PROP_INPUT_FILES)), 
 					instance, privKey, sshUserName, true);
@@ -185,8 +192,9 @@ public class FogbowExecutor implements JobExecutor {
 			return;
 		}
 		
-		FogbowClient fogbowClient = new FogbowClient(extraParams.get(PROP_MANAGER_HOST), 
-				Integer.parseInt(extraParams.get(PROP_MANAGER_PORT)), 
+		FogbowClient fogbowClient = new FogbowClient(
+				pluginProperties.getProperty(PROP_MANAGER_HOST), 
+				Integer.parseInt(pluginProperties.getProperty(PROP_MANAGER_PORT)), 
 				extraParams.get(PROP_FEDERATION_TOKEN));
 		try {
 			fogbowClient.deleteRequest(request.getId());
@@ -257,8 +265,9 @@ public class FogbowExecutor implements JobExecutor {
 		
 		FogbowJobData fogbowJobData = (FogbowJobData) data;
 		Map<String, String> extraParams = fogbowJobData.getExtraParams();
-		FogbowClient fogbowClient = new FogbowClient(extraParams.get(PROP_MANAGER_HOST), 
-				Integer.parseInt(extraParams.get(PROP_MANAGER_PORT)), 
+		FogbowClient fogbowClient = new FogbowClient(
+				pluginProperties.getProperty(PROP_MANAGER_HOST), 
+				Integer.parseInt(pluginProperties.getProperty(PROP_MANAGER_PORT)), 
 				extraParams.get(PROP_FEDERATION_TOKEN));
 		Instance instance = null;
 		try {
@@ -273,7 +282,7 @@ public class FogbowExecutor implements JobExecutor {
 			return false;
 		}
 		
-		String sshUserName = extraParams.get(PROP_SSH_USER_NAME);
+		String sshUserName = pluginProperties.getProperty(PROP_SSH_USER_NAME);
 		String privKey = null;
 		try {
 			privKey = IOUtils.toString(

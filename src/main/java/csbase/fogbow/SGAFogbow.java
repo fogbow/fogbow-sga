@@ -7,7 +7,7 @@ public class SGAFogbow extends SGALocal {
 
 	public SGAFogbow(IServiceManager serviceManager) {
 		super(serviceManager);
-		setExecutor(new FogbowExecutor());
+		setExecutor(new FogbowExecutor(pluginProperties));
 		setMonitor(new FogbowMonitor());
 	}
 
