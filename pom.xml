@@ -54,11 +54,46 @@
 			</plugin>
 		</plugins>
 	</build>
+	
+	<pluginRepositories>
+        <pluginRepository>
+            <id>Tecgraf Snapshots</id>
+			<name>Tecgraf Snapshots</name>
+            <url>http://maven.tecgraf.puc-rio.br:8081/nexus/content/repositories/snapshots</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
 
 	<repositories>
 		<repository>
-			<id>local</id>
-			<url>file://${basedir}/.m2</url>
+			<id>Tecgraf Releases</id>
+			<name>Tecgraf Releases</name>
+			<url> http://maven.tecgraf.puc-rio.br:8081/nexus/content/repositories/releases</url>
+		</repository>
+		<repository>
+			<id>Tecgraf 3rd Party</id>
+			<name>Tecgraf 3rd Party</name>
+			<url>http://maven.tecgraf.puc-rio.br:8081/nexus/content/repositories/thirdparty</url>
+		</repository>
+		<repository>
+			<id>Tecgraf Snapshots</id>
+			<name>Tecgraf Snapshots</name>
+			<url>http://maven.tecgraf.puc-rio.br:8081/nexus/content/repositories/snapshots</url>
+		</repository>
+		<repository>
+			<id>Tecgraf Osgeo</id>
+			<name>Tecgraf Osgeo</name>
+			<url>http://maven.tecgraf.puc-rio.br:8081/nexus/content/repositories/osgeo</url>
+		</repository>
+		<repository>
+			<id>Tecgraf Central</id>
+			<name>Tecgraf Cental</name>
+			<url>http://maven.tecgraf.puc-rio.br:8081/nexus/content/repositories/central</url>
 		</repository>
 	</repositories>
 
