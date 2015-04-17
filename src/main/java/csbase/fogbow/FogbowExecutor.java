@@ -47,6 +47,7 @@ public class FogbowExecutor implements JobExecutor {
 	private static final String PROP_REQUIREMENTS = "fogbow_requirements";
 	
 	private static final int RETRY_INTERVAL = 30000;
+	private static final int MAX_RETRIES = 30;
 	private static final String REMOTE_SANDBOX = "/tmp/sandbox/";
 	
 	@Override
@@ -68,16 +69,28 @@ public class FogbowExecutor implements JobExecutor {
 			return null;
 		}
 		
+		int retries = 0;
 		Request request = null;
-		while ((request = getRequestInfo(fogbowClient, requestId)) == null) {
+		boolean shouldRetry = true;
+		while (shouldRetry && (request = getRequestInfo(fogbowClient, requestId)) == null) {
 			sleep();
+			shouldRetry = retries++ < MAX_RETRIES;
 		}
 		Instance instance = null;
-		while ((instance = getInstanceInfo(fogbowClient, request)) == null) {
+		while (shouldRetry && (instance = getInstanceInfo(fogbowClient, request)) == null) {
 			sleep();
+			shouldRetry = retries++ < MAX_RETRIES;
 		}
-		while (!checkSSHConnectity(instance)) {
+
+		while (shouldRetry && !checkSSHConnectity(instance)) {
 			sleep();
+			shouldRetry = retries++ < MAX_RETRIES;
+		}
+		
+		if (!shouldRetry) {
+			terminate(request, extraParams);
+			observer.onJobLost();			
+			return null;
 		}
 		
 		stageAndExecInBg(jobCommand, extraParams, request, instance, observer);
@@ -168,6 +181,10 @@ public class FogbowExecutor implements JobExecutor {
 	}
 	
 	private void terminate(Request request, Map<String, String> extraParams) {
+		if (request == null) {
+			return;
+		}
+		
 		FogbowClient fogbowClient = new FogbowClient(extraParams.get(PROP_MANAGER_HOST), 
 				Integer.parseInt(extraParams.get(PROP_MANAGER_PORT)), 
 				extraParams.get(PROP_FEDERATION_TOKEN));
@@ -209,7 +226,6 @@ public class FogbowExecutor implements JobExecutor {
 			if (instance.getSshHost() != null) {
 				return instance;
 			}
-			sleep();
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Couldn't retrieve Instance info from the Fogbow manager", e);
 		}
@@ -230,7 +246,6 @@ public class FogbowExecutor implements JobExecutor {
 			if (request.getInstanceId() != null) {
 				return request;
 			}
-			sleep();
 		} catch (Exception e) {
 			LOGGER.log(Level.WARNING, "Couldn't retrieve Request info from the Fogbow manager", e);
 		}
