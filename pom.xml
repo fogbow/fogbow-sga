@@ -55,20 +55,20 @@
 			</plugin>
 		</plugins>
 	</build>
-	
+
 	<pluginRepositories>
-        <pluginRepository>
-            <id>Tecgraf Snapshots</id>
+		<pluginRepository>
+			<id>Tecgraf Snapshots</id>
 			<name>Tecgraf Snapshots</name>
-            <url>http://maven.tecgraf.puc-rio.br:8081/nexus/content/repositories/snapshots</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </pluginRepository>
-    </pluginRepositories>
+			<url>http://maven.tecgraf.puc-rio.br:8081/nexus/content/repositories/snapshots</url>
+			<releases>
+				<enabled>true</enabled>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</pluginRepository>
+	</pluginRepositories>
 
 	<repositories>
 		<repository>
@@ -120,19 +120,9 @@
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>net.schmizz</groupId>
+			<groupId>com.hierynomus</groupId>
 			<artifactId>sshj</artifactId>
-			<version>0.10.0</version>
-			<exclusions>
-				<exclusion>
-					<groupId>org.bouncycastle</groupId>
-					<artifactId>bcpkix-jdk15on</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>org.bouncycastle</groupId>
-					<artifactId>bcprov-jdk15on</artifactId>
-				</exclusion>
-			</exclusions>
+			<version>0.12.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.json</groupId>
